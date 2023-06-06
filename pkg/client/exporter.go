@@ -17,14 +17,7 @@ import (
 const OBSERVATION_ID uint32 = 61166
 
 func NewExporter(raddr *net.UDPAddr, setChan chan ipfix.Set, errChan chan ClientError) {
-	laddr, err := net.ResolveUDPAddr("udp", ":0")
-	if err != nil {
-		errChan <- ClientError{
-			Component: "exporter",
-			Error:     err,
-		}
-	}
-	conn, err := net.DialUDP("udp", laddr, raddr)
+	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
 		errChan <- ClientError{
 			Component: "exporter",
