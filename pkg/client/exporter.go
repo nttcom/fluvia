@@ -6,7 +6,6 @@
 package client
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -51,7 +50,6 @@ func SendMessage(message *ipfix.Message, conn *net.UDPConn) {
 	byteMessage := message.Serialize()
 
 	_, err := conn.Write(byteMessage)
-	fmt.Print(byteMessage)
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(1)
