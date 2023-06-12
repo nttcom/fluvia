@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://github.com/nttcom/fluvia/blob/main/docs/figures/fluvia.png" alt="Fluvia Exporter" width="20%">
+<img src="https://github.com/nttcom/fluvia/blob/main/docs/figures/fluvia.png" alt="Fluvia Exporter" width="15%">
 </p>
 
 # Fluvia Exporter
