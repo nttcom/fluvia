@@ -6,6 +6,7 @@
 package client
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -15,33 +16,51 @@ import (
 
 const OBSERVATION_ID uint32 = 61166
 
-func NewExporter(raddr *net.UDPAddr, setChan chan ipfix.Set, errChan chan ClientError) {
+type Exporter struct {
+	flowSeq    uint32
+	tempRecSeq uint16
+}
+
+func NewExporter() *Exporter {
+	e := &Exporter{
+		flowSeq:    1,
+		tempRecSeq: 256,
+	}
+	return e
+}
+
+func (e *Exporter) Run(raddr *net.UDPAddr, flowChan chan []ipfix.FieldValue) error {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
-		errChan <- ClientError{
-			Component: "exporter",
-			Error:     err,
-		}
+		return err
 	}
 	defer conn.Close()
 
-	flowSeq := uint32(1)
 	var m *ipfix.Message
-	//get flow data from go channel
+	// get flow data from go channel
 	for {
-		s := <-setChan
-		sets := []ipfix.Set{s}
-
-		if s.SetID == ipfix.TEMPLATE_SETS_ID { // Template Sets
-			m = ipfix.NewMessage(flowSeq, OBSERVATION_ID, sets)
-		} else if s.SetID == ipfix.OPTIONS_TEMPLATE_SETS_ID { // Options Template Sets
-			m = ipfix.NewMessage(flowSeq, OBSERVATION_ID, sets)
-		} else if s.SetID >= 256 { // Data Sets
-			m = ipfix.NewMessage(flowSeq, OBSERVATION_ID, sets)
-			flowSeq += uint32(len(s.Records)) // mod 2^32
+		fvs := <-flowChan
+		var sets []ipfix.Set
+		// 1. Create template data set
+		var fss []ipfix.FieldSpecifier
+		for _, fv := range fvs {
+			fss = append(fss, *fv.FieldSpecifier())
 		}
+		tempRec := ipfix.NewTemplateRecord(e.tempRecSeq, fss)
+		tempSet := ipfix.NewSet(ipfix.TEMPLATE_SETS_ID, []ipfix.Record{tempRec})
+		sets = append(sets, *tempSet)
 
-		//prepare message data
+		// 2. Create data set
+		dataRec := &ipfix.DataRecord{FieldValues: fvs}
+		dataSet := ipfix.NewSet(e.tempRecSeq, []ipfix.Record{dataRec})
+		sets = append(sets, *dataSet)
+
+		// 3. Create Message and Increment Sequence
+		m = ipfix.NewMessage(e.flowSeq, OBSERVATION_ID, sets)
+		e.tempRecSeq += uint16(len(tempSet.Records))
+		e.flowSeq += uint32(len(dataSet.Records))
+
+		//4. Send message data
 		SendMessage(m, conn)
 	}
 }
@@ -50,6 +69,7 @@ func SendMessage(message *ipfix.Message, conn *net.UDPConn) {
 	byteMessage := message.Serialize()
 
 	_, err := conn.Write(byteMessage)
+	fmt.Printf("Send IPFIX message: %v", byteMessage)
 	if err != nil {
 		log.Fatalln(err)
 		os.Exit(1)

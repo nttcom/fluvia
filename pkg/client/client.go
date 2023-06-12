@@ -12,12 +12,22 @@ import (
 )
 
 func New(raddr *net.UDPAddr) ClientError {
-	ch := make(chan ipfix.Set)
+	ch := make(chan []ipfix.FieldValue)
 	errChan := make(chan ClientError)
-	go NewExporter(raddr, ch, errChan)
-	go NewDummyMeter(ch, errChan)
+
+	e := NewExporter()
+	go func() {
+		err := e.Run(raddr, ch)
+		if err != nil {
+			errChan <- ClientError{
+				Component: "exporter",
+				Error:     err,
+			}
+		}
+	}()
+
 	for {
-		serverError := <-errChan
-		return serverError
+		clientError := <-errChan
+		return clientError
 	}
 }
