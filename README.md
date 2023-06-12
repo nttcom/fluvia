@@ -14,7 +14,7 @@
 IPFIX Exporter Library with Go
 
 ## Features
-* Supports each Information Element (IE) reserved by IANA.
+* Support Informations Element (IEs) reserved by IANA.
     * [IP Flow Information Export (IPFIX) Entities](https://www.iana.org/assignments/ipfix/ipfix.xhtml)
 
 ## Installation & Use
