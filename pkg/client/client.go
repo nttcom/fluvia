@@ -11,7 +11,7 @@ import (
 	"github.com/nttcom/fluvia/pkg/packet/ipfix"
 )
 
-func New(raddr *net.UDPAddr) ClientError {
+func New(ifName string, raddr *net.UDPAddr) ClientError {
 	ch := make(chan []ipfix.FieldValue)
 	errChan := make(chan ClientError)
 
@@ -25,6 +25,7 @@ func New(raddr *net.UDPAddr) ClientError {
 			}
 		}
 	}()
+	go NewMeter(ifName, ch)
 
 	for {
 		clientError := <-errChan
