@@ -12,9 +12,33 @@ import (
 
 type FieldValue interface {
 	Serialize() []uint8
-	Len() uint16
+	Len() uint16 // binary length of field value
 	ElementID() uint16
 	FieldSpecifier() *FieldSpecifier
+}
+
+type PacketDeltaCount struct {
+	Val uint64
+}
+
+func (fv *PacketDeltaCount) ElementID() uint16 {
+	return IEID_PACKET_DELTA_COUNT
+}
+
+func (fv *PacketDeltaCount) Serialize() []uint8 {
+	ret := make([]uint8, 8)
+	binary.BigEndian.PutUint64(ret, fv.Val)
+	return ret
+}
+
+func (fv *PacketDeltaCount) Len() uint16 {
+	return 8
+}
+
+func (fv *PacketDeltaCount) FieldSpecifier() *FieldSpecifier {
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	return fs
 }
 
 type SRHFlagsIPv6 struct {
@@ -34,8 +58,8 @@ func (fv *SRHFlagsIPv6) Len() uint16 {
 }
 
 func (fv *SRHFlagsIPv6) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(1)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -58,8 +82,8 @@ func (fv *SRHTagIPv6) Len() uint16 {
 }
 
 func (fv *SRHTagIPv6) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(2)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -80,8 +104,8 @@ func (fv *SRHSegmentIPv6) Len() uint16 {
 }
 
 func (fv *SRHSegmentIPv6) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(16)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -102,8 +126,8 @@ func (fv *SRHActiveSegmentIPv6) Len() uint16 {
 }
 
 func (fv *SRHActiveSegmentIPv6) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(16)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -146,7 +170,7 @@ func (fv *SRHSegmentIPv6BasicList) Len() uint16 {
 
 func (fv *SRHSegmentIPv6BasicList) FieldSpecifier() *FieldSpecifier {
 	templateLen := uint16(0xffff) // valiable
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -176,7 +200,7 @@ func (fv *SRHSegmentIPv6ListSection) Len() uint16 {
 
 func (fv *SRHSegmentIPv6ListSection) FieldSpecifier() *FieldSpecifier {
 	templateLen := uint16(0xffff) // valiable
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -197,8 +221,8 @@ func (fv *SRHSegmentsIPv6Left) Len() uint16 {
 }
 
 func (fv *SRHSegmentsIPv6Left) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(1)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -219,8 +243,8 @@ func (fv *SRHIPv6ActiveSegmentType) Len() uint16 {
 }
 
 func (fv *SRHIPv6ActiveSegmentType) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(1)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -241,8 +265,8 @@ func (fv *SRHSegmentIPv6LocatorLength) Len() uint16 {
 }
 
 func (fv *SRHSegmentIPv6LocatorLength) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(1)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
@@ -265,8 +289,8 @@ func (fv *SRHSegmentIPv6EndpointBehavior) Len() uint16 {
 }
 
 func (fv *SRHSegmentIPv6EndpointBehavior) FieldSpecifier() *FieldSpecifier {
-	templateLen := uint16(2)
-	fs := NewFieldSpecifier(true, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
 	return fs
 }
 
