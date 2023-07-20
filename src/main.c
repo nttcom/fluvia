@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 NTT Communications Corporation
- * Copyright (c) 2023 Takeru Hayasaka 
+ * Copyright (c) 2023 Takeru Hayasaka
  */
 
 #define KBUILD_MODNAME "xdp_probe"
@@ -18,12 +18,13 @@
 
 #include "xdp_map.h"
 
-SEC("xdp")   
-int xdp_prog(struct xdp_md *ctx) {
-	void *data_end = (void *)(long)ctx->data_end;
-	void *data = (void *)(long)ctx->data;
-	__u32 probe_key = XDP_PASS;
-	struct ethhdr *eth = data;
+SEC("xdp")
+int xdp_prog(struct xdp_md *ctx)
+{
+    void *data_end = (void *)(long)ctx->data_end;
+    void *data = (void *)(long)ctx->data;
+    __u32 probe_key = XDP_PASS;
+    struct ethhdr *eth = data;
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
@@ -62,11 +63,11 @@ int xdp_prog(struct xdp_md *ctx) {
     key.flags = srh->flags;
     key.tag = srh->tag;
 
-    for(int i=0; i<MAX_SEGMENTLIST_ENTRIES; i++ )
-    {   
-        if (!(i < key.lastEntry + 1) )
+    for (int i = 0; i < MAX_SEGMENTLIST_ENTRIES; i++)
+    {
+        if (!(i < key.lastEntry + 1))
             break;
-        
+
         if ((void *)(data + sizeof(struct ethhdr) + sizeof(struct ipv6hdr) + sizeof(struct srhhdr) + sizeof(struct in6_addr) * (i + 1) + 1) > data_end)
             break;
 
@@ -74,7 +75,8 @@ int xdp_prog(struct xdp_md *ctx) {
     }
 
     value = bpf_map_lookup_elem(&ipfix_probe_map, &key);
-    if (!value) {
+    if (!value)
+    {
         bpf_map_update_elem(&ipfix_probe_map, &key, &zero, BPF_NOEXIST);
         value = bpf_map_lookup_elem(&ipfix_probe_map, &key);
         if (!value)
@@ -82,7 +84,7 @@ int xdp_prog(struct xdp_md *ctx) {
     }
     (*value)++;
 
-	return XDP_PASS;
+    return XDP_PASS;
 }
 
 char _license[] SEC("license") = "MIT";

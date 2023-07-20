@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 NTT Communications Corporation
- * Copyright (c) 2023 Takeru Hayasaka 
+ * Copyright (c) 2023 Takeru Hayasaka
  */
 
 #ifndef __XDP_STRUCTS_H
@@ -25,10 +25,11 @@ struct srhhdr
     struct in6_addr segments[0];
 };
 
-struct probe_data {
-	__u8	h_dest[ETH_ALEN];
-	__u8	h_source[ETH_ALEN];
-	__be16		    h_proto;
+struct probe_data
+{
+    __u8 h_dest[ETH_ALEN];
+    __u8 h_source[ETH_ALEN];
+    __be16 h_proto;
     struct in6_addr v6_srcaddr;
     struct in6_addr v6_dstaddr;
     __u8 nextHdr;

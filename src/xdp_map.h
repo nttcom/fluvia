@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 NTT Communications Corporation
- * Copyright (c) 2023 Takeru Hayasaka 
+ * Copyright (c) 2023 Takeru Hayasaka
  */
 
 #ifndef __XDP_MAPS_H
@@ -12,7 +12,8 @@
 #include <bpf/bpf_endian.h>
 #include "xdp_consts.h"
 #include "xdp_struct.h"
-struct {
+struct
+{
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, MAX_MAP_ENTRIES);
     __type(key, struct probe_data);
