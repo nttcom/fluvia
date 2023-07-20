@@ -11,10 +11,11 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/nttcom/fluvia)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-IPFIX Exporter Library with Go
+IPFIX Exporter using eBPF/XDP and IPFIX Library with Go
 
 ## Features
-* Support Information Elements (IEs) reserved by IANA.
+* **IPFIX Exporter in XDP/eBPF-enabled Environments:** Functions as an IPFIX Exporter within XDP/eBPF-enabled environments.
+* **Support for IANA Reserved Information Elements (IEs):** Supports IEs reserved by IANA, ensuring compatibility with standards.
     * [IP Flow Information Export (IPFIX) Entities](https://www.iana.org/assignments/ipfix/ipfix.xhtml)
 
 ## Installation & Use
