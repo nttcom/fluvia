@@ -16,7 +16,7 @@ Specify the IP address and port number for IPFIX collector
 ```yaml
 ---
 ipfix:
-  addr: 192.0.2.1
+  address: 192.0.2.1
   port: 4739
   ingress-interface: ens192
 ```
