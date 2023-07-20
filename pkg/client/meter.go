@@ -18,10 +18,10 @@ import (
 	"github.com/nttcom/fluvia/pkg/packet/ipfix"
 )
 
-func NewMeter(ifaceName string, ch chan []ipfix.FieldValue) {
-	iface, err := net.InterfaceByName(ifaceName)
+func NewMeter(ingressIfName string, ch chan []ipfix.FieldValue) {
+	iface, err := net.InterfaceByName(ingressIfName)
 	if err != nil {
-		log.Fatalf("lookup network iface %q: %s", ifaceName, err)
+		log.Fatalf("lookup network iface %q: %s", ingressIfName, err)
 	}
 
 	// Load the XDP program

@@ -12,8 +12,9 @@ import (
 )
 
 type Ipfix struct {
-	Address string `yaml:"address"`
-	Port    string `yaml:"port"`
+	Address          string `yaml:"address"`
+	Port             string `yaml:"port"`
+	IngressInterface string `yaml:"ingress-interface"`
 }
 
 type Config struct {
