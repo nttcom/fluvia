@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 NTT Communications Corporation
- * Copyright (c) 2023 Takeru Hayasaka 
+ * Copyright (c) 2023 Takeru Hayasaka
  */
 
 #ifndef __XDP_CONSTS_H
