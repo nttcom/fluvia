@@ -16,8 +16,9 @@ Specify the IP address and port number for IPFIX collector
 ```yaml
 ---
 ipfix:
-  addr: 192.0.2.1
+  address: 192.0.2.1
   port: 4739
+  ingress-interface: ens192
 ```
 
 ### Run Fluvia Exporter using the fluvia command
@@ -27,10 +28,6 @@ Start the fluvia command. Specify the created configuration file with the -f opt
 ```bash
 $ sudo fluvia -f fluvia.yaml
 ```
-
-> **Note**
-> TODO: Implement `meter.go` to acquire flow data and send it to `exporter.go` via channel ch.
-> Currently, the fluvia command only has an exporter function, and `meter.go` is not implemented yet.
 
 
 ## 2. Fluvia Exporter as a Native IPFIX Exporter Library

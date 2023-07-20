@@ -18,8 +18,8 @@ import (
 )
 
 type flags struct {
-	configFile string
-	ifName     string
+	configFile    string
+	ingressIfName string
 }
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 	// Parse flags
 	f := &flags{}
 	flag.StringVar(&f.configFile, "f", "fluvia.yaml", "Specify a configuration file")
-	flag.StringVar(&f.ifName, "i", "", "Specify a configuration file")
+	flag.StringVar(&f.ingressIfName, "i", "", "Specify a configuration file")
 	flag.Parse()
 
 	// Read configuration file
@@ -46,5 +46,10 @@ func main() {
 		log.Panic(err)
 	}
 
-	client.New(f.ifName, raddr)
+	ingressIfName := f.ingressIfName
+	if f.ingressIfName == "" {
+		ingressIfName = c.Ipfix.IngressInterface
+	}
+
+	client.New(ingressIfName, raddr)
 }
