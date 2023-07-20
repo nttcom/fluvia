@@ -11,7 +11,7 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/nttcom/fluvia)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-IPFIX Exporter Library with Go
+IPFIX Exporter using eBPF/XDP and IPFIX Library with Go
 
 ## Features
 * Support Information Elements (IEs) reserved by IANA.
