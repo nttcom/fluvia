@@ -790,24 +790,24 @@ const (
 	IEID_BGP_LARGE_COMMUNITY                          uint16 = 489 // RFC8549
 	IEID_BGP_SOURCE_LARGE_COMMUNITY_LIST              uint16 = 490 // RFC8549
 	IEID_BGP_DESTINATION_LARGE_COMMUNITY_LIST         uint16 = 491 // RFC8549
-	// 492-499 Unassigned
-	IEID_SRH_FLAGS_IPV6                     uint16 = 500 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_TAG_IPV6                       uint16 = 501 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_SEGMENT_IPV6                   uint16 = 502 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_ACTIVE_SEGMENT_IPV6            uint16 = 503 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_SEGMENT_IPV6_BASIC_LIST        uint16 = 504 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_SEGMENT_IPV6_LIST_SECTION      uint16 = 505 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_SEGMENT_IPV6_LEFT              uint16 = 506 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_IPV6_SECTION                   uint16 = 507 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_IPV6_ACTIVE_SEGMENT_TYPE       uint16 = 508 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_SEGMENT_IPV6_LOCATOR_LENGTH    uint16 = 509 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_SRH_SEGMENT_IPV6_ENDPOINT_BEHAVIOR uint16 = 510 // draft-ietf-opsawg-ipfix-srv6-srh
-	IEID_PATH_DELAY_MEAN_DALTA_MICROSECONDS uint16 = 521 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_MEAN_DALTA_NANOSECONDS  uint16 = 522 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_MIN_DALTA_MICROSECONDS  uint16 = 523 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_MIN_DALTA_NANOSECONDS   uint16 = 524 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_MAX_DALTA_MICROSECONDS  uint16 = 525 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_MAX_DALTA_NANOSECONDS   uint16 = 526 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_SUM_DALTA_MICROSECONDS  uint16 = 527 // draft-ietf-opsawg-ipfix-on-path-telemetry
-	IEID_PATH_DELAY_SUM_DALTA_NANOSECONDS   uint16 = 528 // draft-ietf-opsawg-ipfix-on-path-telemetry
+	IEID_SRH_FLAGS_IPV6                               uint16 = 492 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_TAG_IPV6                                 uint16 = 493 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_SEGMENT_IPV6                             uint16 = 494 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_ACTIVE_SEGMENT_IPV6                      uint16 = 495 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_SEGMENT_IPV6_BASIC_LIST                  uint16 = 496 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_SEGMENT_IPV6_LIST_SECTION                uint16 = 497 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_SEGMENT_IPV6_LEFT                        uint16 = 498 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_IPV6_SECTION                             uint16 = 499 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_IPV6_ACTIVE_SEGMENT_TYPE                 uint16 = 500 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_SEGMENT_IPV6_LOCATOR_LENGTH              uint16 = 501 // draft-ietf-opsawg-ipfix-srv6-srh
+	IEID_SRH_SEGMENT_IPV6_ENDPOINT_BEHAVIOR           uint16 = 502 // draft-ietf-opsawg-ipfix-srv6-srh
+	// 503-520 Unassigned
+	IEID_PATH_DELAY_MEAN_DALTA_MICROSECONDS           uint16 = 521 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_MEAN_DALTA_NANOSECONDS            uint16 = 522 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_MIN_DALTA_MICROSECONDS            uint16 = 523 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_MIN_DALTA_NANOSECONDS             uint16 = 524 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_MAX_DALTA_MICROSECONDS            uint16 = 525 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_MAX_DALTA_NANOSECONDS             uint16 = 526 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_SUM_DALTA_MICROSECONDS            uint16 = 527 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
+	IEID_PATH_DELAY_SUM_DALTA_NANOSECONDS             uint16 = 528 // draft-ietf-opsawg-ipfix-on-path-telemetry (not yet allocated by IANA)
 )
