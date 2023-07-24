@@ -11,7 +11,7 @@
 [![Go version](https://img.shields.io/github/go-mod/go-version/nttcom/fluvia)](https://go.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-IPFIX Exporter using eBPF/XDP and IPFIX Library with Go
+IPFIX Exporter using eBPF/XDP and IPFIX Library in Go
 
 ## Features
 * **IPFIX Exporter in XDP/eBPF-enabled Environments:** Functions as an IPFIX Exporter within XDP/eBPF-enabled environments.
@@ -22,10 +22,9 @@ IPFIX Exporter using eBPF/XDP and IPFIX Library with Go
 * [Getting Started](docs/sources/getting-started.md)
 
 ## Contributing
-See [CONTRIBUTING](https://github.com/nttcom/fluvia/blob/main/CONTRIBUTING.md).  
-Please fork the repository and create a Pull Request.
-We welcome and appreciate your contribution.
+If you are interested in contributing to the project, please refer to the [CONTRIBUTING](https://github.com/nttcom/fluvia/blob/main/CONTRIBUTING.md) guidelines.  
+Feel free to fork the repository and create a Pull Request. Your contributions are highly appreciated.
 
 ## Licensing
-Fluvia Exporter is under [MIT license](https://en.wikipedia.org/wiki/MIT_License). 
-See [LICENSE](https://github.com/nttcom/fluvia/blob/master/LICENSE) for the full license text.
+Fluvia Exporter is licensed under the [MIT license](https://en.wikipedia.org/wiki/MIT_License).  
+For the full license text, see [LICENSE](https://github.com/nttcom/fluvia/blob/master/LICENSE).
