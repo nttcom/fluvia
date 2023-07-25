@@ -14,9 +14,9 @@
 IPFIX Exporter using eBPF/XDP and IPFIX Library in Go
 
 ## Features
-* **IPFIX Exporter in XDP/eBPF-enabled Environments:** Functions as an IPFIX Exporter within XDP/eBPF-enabled environments.
-* **Support for IANA Reserved Information Elements (IEs):** Supports IEs reserved by IANA, ensuring compatibility with standards.
-    * [IP Flow Information Export (IPFIX) Entities](https://www.iana.org/assignments/ipfix/ipfix.xhtml)
+* IPFIX Exporter with eBPF/XDP
+* IPFIX Library in Go
+    * Support for [IANA Reserved Information Elements (IEs)](https://www.iana.org/assignments/ipfix/ipfix.xhtml)
 
 ## Installation & Use
 * [Getting Started](docs/sources/getting-started.md)
@@ -28,3 +28,14 @@ Feel free to fork the repository and create a Pull Request. Your contributions a
 ## Licensing
 Fluvia Exporter is licensed under the [MIT license](https://en.wikipedia.org/wiki/MIT_License).  
 For the full license text, see [LICENSE](https://github.com/nttcom/fluvia/blob/master/LICENSE).
+
+## Miscellaneous
+Fluvia Exporter supports the following IETF Internet-Drafts:
+- [Export of Segment Routing over IPv6 Information in IP Flow Information Export (IPFIX)](https://datatracker.ietf.org/doc/html/draft-ietf-opsawg-ipfix-srv6-srh-14)
+  - IPFIX Library: Supports all IEs.
+  - IPFIX Exporter: Implemented the following IEs.
+    - srhActiveSegmentIPv6
+    - srhSegmentsIPv6Left
+    - srhFlagsIPv6
+    - srhTagIPv6
+    - srhSegmentIPv6BasicList
