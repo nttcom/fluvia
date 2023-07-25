@@ -14,9 +14,9 @@
 IPFIX Exporter using eBPF/XDP and IPFIX Library in Go
 
 ## Features
-* IPFIX Exporter in XDP/eBPF-enabled Environments
-* Support for IANA Reserved Information Elements (IEs)
-    * [IP Flow Information Export (IPFIX) Entities](https://www.iana.org/assignments/ipfix/ipfix.xhtml)
+* IPFIX Exporter with eBPF/XDP
+* IPFIX Library in Go
+    * Support for [IANA Reserved Information Elements (IEs)](https://www.iana.org/assignments/ipfix/ipfix.xhtml)
 
 ## Installation & Use
 * [Getting Started](docs/sources/getting-started.md)
