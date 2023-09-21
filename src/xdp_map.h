@@ -14,10 +14,8 @@
 #include "xdp_struct.h"
 struct
 {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
     __uint(max_entries, MAX_MAP_ENTRIES);
-    __type(key, struct probe_data);
-    __type(value, __u64);
-} ipfix_probe_map SEC(".maps");
+} packet_probe_perf SEC(".maps");
 
 #endif
