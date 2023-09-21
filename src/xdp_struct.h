@@ -40,6 +40,8 @@ struct probe_data
     __u8 flags;
     __u16 tag;
     struct in6_addr segments[MAX_SEGMENTLIST_ENTRIES];
+    __u32 tstamp_second;
+    __u32 tstamp_subsecond;
 };
 
 #endif
