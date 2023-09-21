@@ -132,7 +132,7 @@ int xdp_prog(struct xdp_md *ctx)
 
     p = (void *)(ipv6 + 1);
     nh = ipv6->nexthdr;
-    while ((void *)p < data_end) {
+    for (int i = 0; i < MAX_PROCESSED_EXTHDR; i++) {
         if (nh == IPPROTO_IPV6ROUTE) {
             srh = (struct srhhdr *)p;
 
