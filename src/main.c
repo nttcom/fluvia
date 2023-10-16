@@ -23,6 +23,9 @@
 
 static inline int parse_srv6(struct srhhdr *srh, struct probe_data *key, void *data_end)
 {
+    if ((void *)(srh + 1) > data_end) {
+        return -1;
+    }
     if (srh->routingType != IPV6_SRCRT_TYPE_4) // IPV6_SRCRT_TYPE_4 = SRH
         return -1;
 
@@ -56,9 +59,15 @@ static inline int parse_ioam6_trace_header(struct ioam6_trace_hdr *ith, struct p
 
     data = ith->data + ith->remlen * 4 - ith->nodelen * 4;
 
+    if (data < ith->data || (void *)(data + sizeof(__be32)) > data_end) return -1;
+
     // timestamp seconds
     if (ith->type.bit2) {
-        packet_tstamp = bpf_ntohl(*(__be32 *)data);
+        if (*(__be32 *)data >= 0) {
+            packet_tstamp = bpf_ntohl(*(__be32 *)data);
+        } else {
+            return -1;
+        }
 
         key->tstamp_second = packet_tstamp;
 
@@ -75,7 +84,11 @@ static inline int parse_ioam6_trace_header(struct ioam6_trace_hdr *ith, struct p
     }
 
     if (ith->type.bit3) {
-        packet_tstamp = bpf_ntohl(*(__be32 *)data);
+        if (*(__be32 *)data >= 0) {
+            packet_tstamp = bpf_ntohl(*(__be32 *)data);
+        } else {
+            return -1;
+        }
 
         key->tstamp_subsecond = packet_tstamp;
 
@@ -103,14 +116,14 @@ int xdp_prog(struct xdp_md *ctx)
     __u32 probe_key = XDP_PASS;
     struct probe_data key = {};
     __u64 zero = 0, *value;
-    __u8 nh;
-    int ret, hoplen;
+    int ret, _hoplen;
 
     struct ethhdr *eth = data;
     struct ipv6hdr *ipv6;
     struct srhhdr *srh;
     struct ipv6_hopopt_hdr *hopopth;
     struct ioam6_hdr *ioam6h;
+    __u8 ioam6_opt_type;
     struct ioam6_trace_hdr *ioam6_trace_h;
 
     if ((void *)(eth + 1) > data_end)
@@ -130,51 +143,55 @@ int xdp_prog(struct xdp_md *ctx)
     key.v6_srcaddr = ipv6->saddr;
     key.v6_dstaddr = ipv6->daddr;
 
-    p = (void *)(ipv6 + 1);
-    nh = ipv6->nexthdr;
-    for (int i = 0; i < MAX_PROCESSED_EXTHDR; i++) {
-        if (nh == IPPROTO_IPV6ROUTE) {
-            srh = (struct srhhdr *)p;
+    if (ipv6->nexthdr != IPPROTO_IPV6ROUTE) {
+        return XDP_PASS;
+    }
 
-            if ((void *)(srh + 1) > data_end)
-                return XDP_PASS;
+    srh = (void *)(ipv6 + 1);
+    if ((void *)(srh + 1) > data_end)
+        return XDP_PASS;
 
-            ret = parse_srv6(srh, &key, data_end);
-            if (ret != 0)
-                bpf_printk("fail to parse_srv6 fail");
-                return XDP_PASS;
+    ret = parse_srv6(srh, &key, data_end);
+    if (ret != 0)
+        bpf_printk("fail to parse_srv6 fail");
+        return XDP_PASS;
 
-            nh = srh->nextHdr;
-            p = (void *)(srh + 1) + srh->hdrExtLen * 8 - 16;
-        } else if (nh == IPPROTO_HOPOPTS) {
-            hopopth = (struct ipv6_hopopt_hdr *)p;
-            nh = hopopth->nexthdr;
-            hoplen = (hopopth->hdrlen + 1) << 3;
+    if (srh->nextHdr != IPPROTO_HOPOPTS) {
+        return XDP_PASS;
+    }
 
-            p += sizeof(struct ipv6_hopopt_hdr);
+    p = (void *)(srh + 1) + srh->hdrExtLen * 8 - 16;
+    if ((void *)p > data_end) {
+        return XDP_PASS;
+    }
 
-            while (hoplen > 0) {
-                // If not IPV6_TLV_IOAM
-                if (p[0] != IPV6_TLV_IOAM) {
-                    p += p[1] + 2;
-                    hoplen -= p[1] + 2;
-                    continue;
-                }
+    hopopth = (struct ipv6_hopopt_hdr *)p;
+    if ((void *)(hopopth + 1) > data_end)
+        return XDP_PASS;
 
-                ioam6h = (struct ioam6_hdr *)p;
-                if (ioam6h->type == IOAM6_TYPE_PREALLOC) {
-                    p += sizeof(*ioam6h);
-                    ret = parse_ioam6_trace_header((struct ioam6_trace_hdr *)p, &key, data_end);
-                    if (ret != 0) {
-                        bpf_printk("failed to parse ioam6 trace header");
-                        return XDP_PASS;
-                    }
-                }
+    _hoplen = (hopopth->hdrlen + 1) << 3;
 
-                p += ioam6h->opt_len + 2;
-                hoplen -= ioam6h->opt_len + 2;
-            }
-        }
+    ioam6h = (void *)(hopopth + 1);
+    if ((void *)(ioam6h + 1) > data_end)
+        return XDP_PASS;
+
+    if (ioam6h->opt_type != IPV6_TLV_IOAM) {
+        return XDP_PASS;
+    }
+
+    if (ioam6h->type != IOAM6_TYPE_PREALLOC) {
+        return XDP_PASS;
+    }
+
+    ioam6_trace_h = (void *)(ioam6h + 1);
+    if ((void *)(ioam6_trace_h + 1) > data_end) {
+        return XDP_PASS;
+    }
+
+    ret = parse_ioam6_trace_header(ioam6_trace_h, &key, data_end);
+    if (ret != 0) {
+        bpf_printk("failed to parse ioam6 trace header");
+        return XDP_PASS;
     }
 
     value = bpf_map_lookup_elem(&ipfix_probe_map, &key);
