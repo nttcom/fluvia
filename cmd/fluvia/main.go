@@ -51,5 +51,10 @@ func main() {
 		ingressIfName = c.Ipfix.IngressInterface
 	}
 
-	client.New(ingressIfName, raddr)
+	interval := c.Ipfix.Interval
+	if interval <= 0 {
+		interval = 1
+	}
+
+	client.New(ingressIfName, raddr, interval)
 }

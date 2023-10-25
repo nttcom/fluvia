@@ -15,6 +15,7 @@ type Ipfix struct {
 	Address          string `yaml:"address"`
 	Port             string `yaml:"port"`
 	IngressInterface string `yaml:"ingress-interface"`
+	Interval         int    `yaml:"interval"`
 }
 
 type Config struct {
