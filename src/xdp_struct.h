@@ -32,6 +32,8 @@ struct probe_data
     __be16 h_proto;
     struct in6_addr v6_srcaddr;
     struct in6_addr v6_dstaddr;
+    __u32 tstamp_second;
+    __u32 tstamp_subsecond;
     __u8 nextHdr;
     __u8 hdrExtLen;
     __u8 routingType;
@@ -40,8 +42,6 @@ struct probe_data
     __u8 flags;
     __u16 tag;
     struct in6_addr segments[MAX_SEGMENTLIST_ENTRIES];
-    __u32 tstamp_second;
-    __u32 tstamp_subsecond;
 };
 
 #endif

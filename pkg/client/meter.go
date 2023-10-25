@@ -7,12 +7,14 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/netip"
 	"time"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/nttcom/fluvia/pkg/bpf"
 	"github.com/nttcom/fluvia/pkg/packet/ipfix"
@@ -25,9 +27,17 @@ func NewMeter(ingressIfName string, ch chan []ipfix.FieldValue) {
 	}
 
 	// Load the XDP program
-	objs, err := bpf.ReadXdpObjects(nil)
+	objs, err := bpf.ReadXdpObjects(&ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			LogLevel: ebpf.LogLevelInstruction,
+			LogSize:  ebpf.DefaultVerifierLogSize * 256,
+		},
+	})
 	if err != nil {
-		log.Fatalf("Could not load XDP program: %s", err)
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) {
+			log.Fatalf("Could not load XDP program: %+v\n", ve)
+		}
 	}
 	defer objs.Close()
 
