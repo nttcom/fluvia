@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
-	"github.com/facebookincubator/ntp"
 	"github.com/pkg/errors"
 )
 
@@ -67,10 +66,10 @@ func PrintEntrys(entry XdpProbeData, count uint64) {
 	saddr := net.IP(entry.V6Srcaddr.In6U.U6Addr8[:]).String()
 	daddr := net.IP(entry.V6Dstaddr.In6U.U6Addr8[:]).String()
 
-	unixTime := ntp.Unix(entry.TstampSecond, entry.TstampSubsecond)
+	unixTime := time.Unix(int64(entry.TstampSecond), int64(entry.TstampSubsecond))
 
 	fmt.Printf(
-		"H_dest: %s, H_source: %v, H_proto: %v, V6Dstaddr: %v, V6Srcaddr: %v Timestamp: %v -> count: %v\n",
-		mac(entry.H_dest), mac(entry.H_source), entry.H_proto, daddr, saddr, unixTime.Format(time.RFC3339Nano), count)
+		"H_dest: %s, H_source: %v, H_proto: %v, V6Dstaddr: %v, V6Srcaddr: %v Timestamp: %v(%v.%v) -> count: %v\n",
+		mac(entry.H_dest), mac(entry.H_source), entry.H_proto, daddr, saddr, unixTime.Format(time.RFC3339Nano), entry.TstampSecond, entry.TstampSubsecond, count)
 
 }
