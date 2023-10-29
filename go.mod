@@ -3,7 +3,7 @@ module github.com/nttcom/fluvia
 go 1.20
 
 require (
-	github.com/cilium/ebpf v0.11.0
+	github.com/cilium/ebpf v0.12.2
 	github.com/google/gopacket v1.1.19
 	github.com/pkg/errors v0.9.1
 	gopkg.in/yaml.v3 v3.0.1
