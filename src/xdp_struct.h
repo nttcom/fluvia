@@ -25,23 +25,9 @@ struct srhhdr
     struct in6_addr segments[0];
 };
 
-struct probe_data
+struct metadata
 {
-    __u8 h_dest[ETH_ALEN];
-    __u8 h_source[ETH_ALEN];
-    __be16 h_proto;
-    struct in6_addr v6_srcaddr;
-    struct in6_addr v6_dstaddr;
-    __u32 tstamp_second;
-    __u32 tstamp_subsecond;
-    __u8 nextHdr;
-    __u8 hdrExtLen;
-    __u8 routingType;
-    __u8 segmentsLeft;
-    __u8 lastEntry;
-    __u8 flags;
-    __u16 tag;
-    struct in6_addr segments[MAX_SEGMENTLIST_ENTRIES];
+    __u64 received_time;
 };
 
 #endif

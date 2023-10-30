@@ -21,67 +21,14 @@
 
 #include "xdp_map.h"
 
-static inline int parse_srv6(struct srhhdr *srh, struct probe_data *key, void *data_end)
-{
-    if ((void *)(srh + 1) > data_end) {
-        return -1;
-    }
-    if (srh->routingType != IPV6_SRCRT_TYPE_4) // IPV6_SRCRT_TYPE_4 = SRH
-        return -1;
-
-    key->nextHdr = srh->nextHdr;
-    key->hdrExtLen = srh->hdrExtLen;
-    key->routingType = srh->routingType;
-    key->segmentsLeft = srh->segmentsLeft;
-    key->lastEntry = srh->lastEntry;
-    key->flags = srh->flags;
-    key->tag = srh->tag;
-
-    for (int i = 0; i < MAX_SEGMENTLIST_ENTRIES; i++)
-    {
-        if (!(i < key->lastEntry + 1))
-            break;
-
-        if ((void *)(srh + sizeof(struct srhhdr) + sizeof(struct in6_addr) * (i + 1) + 1) > data_end)
-            break;
-
-        __builtin_memcpy(&key->segments[i], &srh->segments[i], sizeof(struct in6_addr));
-    }
-
-    return 0;
-}
-
-static inline int parse_ioam6_trace_header(struct ioam6_trace_hdr *ith, int hdr_len, struct probe_data *key, void *data_end)
-{
-    __u8 second_index, subsecond_index;
-    __u32 second, subsecond;
-
-    if ((void *)(ith + 1) > data_end)
-        return -1;
-
-    second_index = hdr_len - 8;
-    subsecond_index = hdr_len - 4;
-
-    if ((void *)ith + second_index + 4 > data_end) return -1;
-    second = bpf_ntohl(*(__u32 *)((void *)ith + second_index));
-
-    if ((void *)ith + subsecond_index + 4 > data_end) return -1;
-    subsecond = bpf_ntohl(*(__u32 *)((void *)ith + subsecond_index));
-
-    key->tstamp_second = second;
-    key->tstamp_subsecond = subsecond;
-
-    return 0;
-}
-
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
     void *data_end = (void *)(long)ctx->data_end;
     void *data = (void *)(long)ctx->data;
+    __u64 packet_size = data_end - data;
     __u8 *p;
-    struct probe_data key = {};
-    __u64 zero = 0, *value;
+    struct metadata md = {};
     int ret, hoplen;
 
     struct ethhdr *eth = data;
@@ -91,12 +38,10 @@ int xdp_prog(struct xdp_md *ctx)
     struct ioam6_hdr *ioam6h;
     struct ioam6_trace_hdr *ioam6_trace_h;
 
+    md.received_time = bpf_ktime_get_ns();
+
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
-
-    key.h_proto = eth->h_proto;
-    __builtin_memcpy(&key.h_source, &eth->h_source, ETH_ALEN);
-    __builtin_memcpy(&key.h_dest, &eth->h_dest, ETH_ALEN);
 
     if (eth->h_proto != bpf_htons(ETH_P_IPV6))
         return XDP_PASS;
@@ -104,9 +49,6 @@ int xdp_prog(struct xdp_md *ctx)
     ipv6 = (void *)(eth + 1);
     if ((void *)(ipv6 + 1) > data_end)
         return XDP_PASS;
-
-    key.v6_srcaddr = ipv6->saddr;
-    key.v6_dstaddr = ipv6->daddr;
 
     if (ipv6->nexthdr != IPPROTO_HOPOPTS)
         return XDP_PASS;
@@ -118,18 +60,19 @@ int xdp_prog(struct xdp_md *ctx)
     hoplen = (hopopth->hdrlen + 1) << 3;
 
     p = (__u8 *)(hopopth + 1);
+
     if ((void *)(p + 1) > data_end)
-	return XDP_PASS;
+        return XDP_PASS;
 
     if (*p == IPV6_TLV_PAD1) {
-	p += 1;
+        p += 1;
     }
 
     if ((void *)(p + 1) > data_end)
-	return XDP_PASS;
+        return XDP_PASS;
 
     if (*p == IPV6_TLV_PAD1) {
-	p += 1;
+        p += 1;
     }
 
     ioam6h = (struct ioam6_hdr *)p;
@@ -145,16 +88,6 @@ int xdp_prog(struct xdp_md *ctx)
         return XDP_PASS;
     }
 
-    ioam6_trace_h = (struct ioam6_trace_hdr *)(ioam6h + 1);
-    if ((void *)(ioam6_trace_h + 1) > data_end) {
-        return XDP_PASS;
-    }
-
-    ret = parse_ioam6_trace_header(ioam6_trace_h, ioam6h->opt_len - 2, &key, data_end);
-    if (ret != 0) {
-        return XDP_PASS;
-    }
-
     if (hopopth->nexthdr != IPPROTO_IPV6ROUTE)
         return XDP_PASS;
 
@@ -162,20 +95,11 @@ int xdp_prog(struct xdp_md *ctx)
     if ((void *)(srh + 1) > data_end)
         return XDP_PASS;
 
-    ret = parse_srv6(srh, &key, data_end);
-    if (ret != 0) {
-        return XDP_PASS;
-    }
+    if (srh->routingType != IPV6_SRCRT_TYPE_4) // IPV6_SRCRT_TYPE_4 = SRH
+        return -1;
 
-    value = bpf_map_lookup_elem(&ipfix_probe_map, &key);
-    if (!value)
-    {
-        bpf_map_update_elem(&ipfix_probe_map, &key, &zero, BPF_NOEXIST);
-        value = bpf_map_lookup_elem(&ipfix_probe_map, &key);
-        if (!value)
-            return XDP_PASS;
-    }
-    (*value)++;
+    __u64 flags = BPF_F_CURRENT_CPU | (packet_size << 32);
+    bpf_perf_event_output(ctx, &ipfix_probe_map, flags, &md, sizeof(md));
 
     return XDP_PASS;
 }
