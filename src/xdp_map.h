@@ -16,6 +16,6 @@ struct
 {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
     __uint(max_entries, MAX_MAP_ENTRIES);
-} ipfix_probe_map SEC(".maps");
+} packet_probe_perf SEC(".maps");
 
 #endif

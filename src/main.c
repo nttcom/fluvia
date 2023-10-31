@@ -99,7 +99,7 @@ int xdp_prog(struct xdp_md *ctx)
         return -1;
 
     __u64 flags = BPF_F_CURRENT_CPU | (packet_size << 32);
-    bpf_perf_event_output(ctx, &ipfix_probe_map, flags, &md, sizeof(md));
+    bpf_perf_event_output(ctx, &packet_probe_perf, flags, &md, sizeof(md));
 
     return XDP_PASS;
 }
