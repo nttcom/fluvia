@@ -3,7 +3,7 @@ package bpf
 import (
 	"encoding/binary"
 	"errors"
-	"net"
+	"net/netip"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -18,7 +18,7 @@ type Srv6Layer struct {
 	LastEntry    uint8
 	Flags        uint8
 	Tag          uint16
-	Segments     []net.IP
+	Segments     []netip.Addr
 }
 
 var Srv6LayerType = gopacket.RegisterLayerType(
@@ -50,10 +50,11 @@ func (i *Srv6Layer) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) err
 		startBit := 8 + 16*j
 		endBit := 24 + 16*j
 		var addr []byte
-		for k := endBit; k >= startBit; k-- {
+		for k := startBit; k < endBit; k++ {
 			addr = append(addr, data[k])
 		}
-		i.Segments = append(i.Segments, addr)
+		seg, _ := netip.AddrFromSlice(addr[:16])
+		i.Segments = append(i.Segments, seg)
 	}
 	i.BaseLayer = layers.BaseLayer{
 		Contents: data[:8],
@@ -76,7 +77,8 @@ func (i *Srv6Layer) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.Serial
 	bytes[5] = i.Flags
 	binary.BigEndian.PutUint16(bytes[6:], i.Tag)
 
-	for i2, address := range i.Segments {
+	for i2, seg := range i.Segments {
+		address := seg.AsSlice()
 		lsb := binary.BigEndian.Uint64(address[:8])
 		msb := binary.BigEndian.Uint64(address[8:])
 		binary.BigEndian.PutUint64(bytes[8+16*i2:], lsb)
