@@ -21,6 +21,29 @@
 
 #include "xdp_map.h"
 
+static inline int parse_ioam6_trace_header(struct ioam6_trace_hdr *ith, int hdr_len, struct metadata *key, void *data_end)
+{
+    __u8 second_index, subsecond_index;
+    __u32 second, subsecond;
+
+    if ((void *)(ith + 1) > data_end)
+        return -1;
+
+    second_index = hdr_len - 8;
+    subsecond_index = hdr_len - 4;
+
+    if ((void *)ith + second_index + 4 > data_end) return -1;
+    second = bpf_ntohl(*(__u32 *)((void *)ith + second_index));
+
+    if ((void *)ith + subsecond_index + 4 > data_end) return -1;
+    subsecond = bpf_ntohl(*(__u32 *)((void *)ith + subsecond_index));
+
+    key->sent_second = second;
+    key->sent_subsecond = subsecond;
+
+    return 0;
+}
+
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
@@ -38,7 +61,7 @@ int xdp_prog(struct xdp_md *ctx)
     struct ioam6_hdr *ioam6h;
     struct ioam6_trace_hdr *ioam6_trace_h;
 
-    md.received_time = bpf_ktime_get_ns();
+    md.received_nanosecond = bpf_ktime_get_ns();
 
     if ((void *)(eth + 1) > data_end)
         return XDP_PASS;
@@ -85,6 +108,16 @@ int xdp_prog(struct xdp_md *ctx)
     }
 
     if (ioam6h->type != IOAM6_TYPE_PREALLOC) {
+        return XDP_PASS;
+    }
+
+    ioam6_trace_h = (struct ioam6_trace_hdr *)(ioam6h + 1);
+    if ((void *)(ioam6_trace_h + 1) > data_end) {
+        return XDP_PASS;
+    }
+
+    ret = parse_ioam6_trace_header(ioam6_trace_h, ioam6h->opt_len - 2, &md, data_end);
+    if (ret != 0) {
         return XDP_PASS;
     }
 

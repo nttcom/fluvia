@@ -27,7 +27,9 @@ struct srhhdr
 
 struct metadata
 {
-    __u64 received_time;
+    __u64 received_nanosecond;
+    __u32 sent_second;
+    __u32 sent_subsecond;
 };
 
 #endif
