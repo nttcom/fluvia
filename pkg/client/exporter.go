@@ -8,9 +8,12 @@ package client
 import (
 	"log"
 	"net"
+	"net/netip"
 	"os"
+	"time"
 
-	"github.com/nttcom/fluvia/pkg/packet/ipfix"
+	"github.com/nttcom/fluvia/pkg/packet"
+	"github.com/nttcom/fluvia/pkg/ipfix"
 )
 
 const OBSERVATION_ID uint32 = 61166
@@ -28,7 +31,7 @@ func NewExporter() *Exporter {
 	return e
 }
 
-func (e *Exporter) Run(raddr *net.UDPAddr, flowChan chan []ipfix.FieldValue) error {
+func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
 		return err
@@ -36,7 +39,60 @@ func (e *Exporter) Run(raddr *net.UDPAddr, flowChan chan []ipfix.FieldValue) err
 	defer conn.Close()
 
 	var m *ipfix.Message
-	// get flow data from go channel
+
+	cache := make(map[packet.ProbeData]*Statistic)
+	flowChan := make(chan []ipfix.FieldValue)
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			for probeData, stat := range sm.Db {
+				if _, ok := cache[probeData]; !ok {
+					cache[probeData] = &Statistic{
+						Count:     0,
+						DelayMean: 0,
+						DelayMin:  0,
+						DelayMax:  0,
+						DelaySum:  0,
+					}
+				}
+
+				dCnt := uint64(stat.Count - cache[probeData].Count)
+
+				cache[probeData].Count = stat.Count
+
+				sl := []ipfix.SRHSegmentIPv6{}
+				for _, seg := range probeData.Segments {
+					ipSeg, _ := netip.ParseAddr(seg)
+
+					// Ignore zero values received from bpf map
+					if ipSeg == netip.IPv6Unspecified() {
+						break
+					}
+					seg := ipfix.SRHSegmentIPv6{Val: ipSeg}
+					sl = append(sl, seg)
+				}
+
+				actSeg, _ := netip.ParseAddr(probeData.Segments[probeData.SegmentsLeft])
+
+				f := []ipfix.FieldValue{
+					&ipfix.PacketDeltaCount{Val: dCnt},
+					&ipfix.SRHActiveSegmentIPv6{Val: actSeg},
+					&ipfix.SRHSegmentsIPv6Left{Val: probeData.SegmentsLeft},
+					&ipfix.SRHFlagsIPv6{Val: probeData.Flags},
+					&ipfix.SRHTagIPv6{Val: probeData.Tag},
+					&ipfix.SRHSegmentIPv6BasicList{
+						SegmentList: sl,
+					},
+				}
+				//  Throw to channel
+				flowChan <- f
+			}
+		}
+	}()
+
 	for {
 		fvs := <-flowChan
 		var sets []ipfix.Set

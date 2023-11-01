@@ -7,20 +7,31 @@
 package client
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
-	"net/netip"
+	"strconv"
+	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
 	"github.com/nttcom/fluvia/pkg/bpf"
-	"github.com/nttcom/fluvia/pkg/packet/ipfix"
+	"github.com/nttcom/fluvia/pkg/packet"
 )
 
-func NewMeter(ingressIfName string, ch chan []ipfix.FieldValue) {
+func NewMeter(ingressIfName string, sm *StatisticMap) {
+	bootTime, err := getSystemBootTime()
+	if err != nil {
+		log.Fatalf("Could not get boot time: %s", err)
+	}
+
 	iface, err := net.InterfaceByName(ingressIfName)
 	if err != nil {
 		log.Fatalf("lookup network iface %q: %s", ingressIfName, err)
@@ -52,56 +63,86 @@ func NewMeter(ingressIfName string, ch chan []ipfix.FieldValue) {
 	}
 	defer l.Close()
 
+	perfEvent, err := perf.NewReader(objs.PacketProbePerf, 4096)
+	if err != nil {
+		log.Fatalf("Could not obtain perf reader: %s", err)
+	}
+
 	log.Printf("Attached XDP program to iface %q (index %d)", iface.Name, iface.Index)
 	log.Printf("Press Ctrl-C to exit and remove the program")
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	mapLogs := map[bpf.XdpProbeData]uint64{}
-	for range ticker.C {
-		var entry bpf.XdpProbeData
-		var count uint64
-
-		iter := objs.IpfixProbeMap.Iterate()
-
-		for iter.Next(&entry, &count) {
-			if _, ok := mapLogs[entry]; !ok {
-				mapLogs[entry] = 0
-			}
-
-			dCnt := uint64(count - mapLogs[entry])
-
-			mapLogs[entry] = count
-
-			sl := []ipfix.SRHSegmentIPv6{}
-			for _, binSeg := range entry.Segments {
-				ipSeg, _ := netip.AddrFromSlice(binSeg.In6U.U6Addr8[:])
-
-				// Ignore zero values received from bpf map
-				if ipSeg == netip.IPv6Unspecified() {
-					break
-				}
-				seg := ipfix.SRHSegmentIPv6{Val: ipSeg}
-				sl = append(sl, seg)
-			}
-
-			actSeg, _ := netip.AddrFromSlice(entry.Segments[entry.SegmentsLeft].In6U.U6Addr8[:])
-
-			f := []ipfix.FieldValue{
-				&ipfix.PacketDeltaCount{Val: dCnt},
-				&ipfix.SRHActiveSegmentIPv6{Val: actSeg},
-				&ipfix.SRHSegmentsIPv6Left{Val: entry.SegmentsLeft},
-				&ipfix.SRHFlagsIPv6{Val: entry.Flags},
-				&ipfix.SRHTagIPv6{Val: entry.Tag},
-				&ipfix.SRHSegmentIPv6BasicList{
-					SegmentList: sl,
-				},
-			}
-			//  Throw to channel
-			ch <- f
+	var metadata bpf.XdpMetaData
+	for {
+		eventData, err := perfEvent.Read()
+		if err != nil {
+			log.Fatalf("Could not read from bpf perf map:")
 		}
-		if err := iter.Err(); err != nil {
-			fmt.Printf("Failed to iterate map: %v\n", err)
+
+		reader := bytes.NewReader(eventData.RawSample)
+
+		if err := binary.Read(reader, binary.LittleEndian, &metadata); err != nil {
+			log.Fatalf("Could not read from reader: %s", err)
 		}
+
+		metadata_size := unsafe.Sizeof(metadata)
+		if len(eventData.RawSample)-int(metadata_size) <= 0 {
+			continue
+		}
+
+		receivedNano := bootTime.Add(time.Duration(metadata.ReceivedNano) * time.Nanosecond)
+		SentNano := time.Unix(int64(metadata.SentSec), int64(metadata.SentSubsec))
+
+		delay := receivedNano.Sub(SentNano)
+
+		probeData, err := packet.Parse(eventData.RawSample[metadata_size:])
+		if err != nil {
+			log.Fatalf("Could not parse the packet: %s", err)
+		}
+
+		delayNano := delay.Nanoseconds()
+
+		sm.Mu.Lock()
+		if value, ok := sm.Db[*probeData]; !ok {
+			sm.Db[*probeData] = &Statistic{
+				Count:     1,
+				DelayMean: delayNano,
+				DelayMin:  delayNano,
+				DelayMax:  delayNano,
+				DelaySum:  delayNano,
+			}
+		} else {
+			value.Count = value.Count + 1
+
+			if delayNano < value.DelayMin {
+				value.DelayMin = delayNano
+			}
+
+			if delayNano > value.DelayMax {
+				value.DelayMax = delayNano
+			}
+
+			value.DelaySum = value.DelaySum + delayNano
+			value.DelayMean = value.DelaySum / value.Count
+		}
+		sm.Mu.Unlock()
 	}
+}
+
+func getSystemBootTime() (time.Time, error) {
+	data, err := ioutil.ReadFile("/proc/uptime")
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	parts := strings.Split(string(data), " ")
+	if len(parts) == 0 {
+		return time.Time{}, fmt.Errorf("unexpected /proc/uptime format")
+	}
+
+	uptime, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Now().Add(-time.Duration(uptime) * time.Second), nil
 }
