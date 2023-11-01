@@ -2,6 +2,7 @@ package packet
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -47,6 +48,21 @@ func Parse(data []byte) (*ProbeData, error) {
 	pd.V6Srcaddr = ipv6.SrcIP.String()
 	pd.V6Dstaddr = ipv6.DstIP.String()
 
+	if ipv6.NextHeader != layers.IPProtocolIPv6HopByHop {
+		return nil, errors.New(fmt.Sprintf("Next header is not IPv6 hop-by-hop(0): %d", ipv6.NextHeader))
+	}
+
+	ipv6HBHLayer := packet.Layer(layers.LayerTypeIPv6HopByHop)
+	hbh, ok := ipv6HBHLayer.(*layers.IPv6HopByHop)
+	if !ok {
+		return nil, errors.New("Could not parse a packet with ipv6 hop-by-hop option")
+	}
+
+	if hbh.NextHeader != layers.IPProtocolIPv6Routing {
+		return nil, errors.New(fmt.Sprintf("Next header is not SRv6: %d", hbh.NextHeader))
+	}
+
+	packet = gopacket.NewPacket(ipv6HBHLayer.LayerPayload(), bpf.Srv6LayerType, gopacket.Lazy)
 	srv6Layer := packet.Layer(bpf.Srv6LayerType)
 	srv6, ok := srv6Layer.(*bpf.Srv6Layer)
 	if !ok {
