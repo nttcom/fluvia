@@ -48,6 +48,7 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 		defer ticker.Stop()
 
 		for range ticker.C {
+			sm.Mu.Lock()
 			for probeData, stat := range sm.Db {
 				if _, ok := cache[probeData]; !ok {
 					cache[probeData] = Statistic{
@@ -97,6 +98,7 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 				//  Throw to channel
 				flowChan <- f
 			}
+			sm.Mu.Unlock()
 		}
 	}()
 
