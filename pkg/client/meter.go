@@ -99,29 +99,29 @@ func NewMeter(ingressIfName string, sm *StatisticMap) {
 			log.Fatalf("Could not parse the packet: %s", err)
 		}
 
-		delayNano := delay.Nanoseconds()
+		delayMicro := delay.Microseconds()
 
 		sm.Mu.Lock()
 		if value, ok := sm.Db[*probeData]; !ok {
 			sm.Db[*probeData] = &Statistic{
 				Count:     1,
-				DelayMean: delayNano,
-				DelayMin:  delayNano,
-				DelayMax:  delayNano,
-				DelaySum:  delayNano,
+				DelayMean: delayMicro,
+				DelayMin:  delayMicro,
+				DelayMax:  delayMicro,
+				DelaySum:  delayMicro,
 			}
 		} else {
 			value.Count = value.Count + 1
 
-			if delayNano < value.DelayMin {
-				value.DelayMin = delayNano
+			if delayMicro < value.DelayMin {
+				value.DelayMin = delayMicro
 			}
 
-			if delayNano > value.DelayMax {
-				value.DelayMax = delayNano
+			if delayMicro > value.DelayMax {
+				value.DelayMax = delayMicro
 			}
 
-			value.DelaySum = value.DelaySum + delayNano
+			value.DelaySum = value.DelaySum + delayMicro
 			value.DelayMean = value.DelaySum / value.Count
 		}
 		sm.Mu.Unlock()
