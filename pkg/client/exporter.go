@@ -12,8 +12,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/nttcom/fluvia/pkg/packet"
 	"github.com/nttcom/fluvia/pkg/ipfix"
+	"github.com/nttcom/fluvia/pkg/packet"
 )
 
 const OBSERVATION_ID uint32 = 61166
@@ -40,7 +40,7 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 
 	var m *ipfix.Message
 
-	cache := make(map[packet.ProbeData]*Statistic)
+	cache := make(map[packet.ProbeData]Statistic)
 	flowChan := make(chan []ipfix.FieldValue)
 
 	go func() {
@@ -50,7 +50,7 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 		for range ticker.C {
 			for probeData, stat := range sm.Db {
 				if _, ok := cache[probeData]; !ok {
-					cache[probeData] = &Statistic{
+					cache[probeData] = Statistic{
 						Count:     0,
 						DelayMean: 0,
 						DelayMin:  0,
@@ -61,10 +61,13 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 
 				dCnt := uint64(stat.Count - cache[probeData].Count)
 
-				cache[probeData].Count = stat.Count
+				cache[probeData] = *stat
 
 				sl := []ipfix.SRHSegmentIPv6{}
 				for _, seg := range probeData.Segments {
+					if seg == "" {
+						break
+					}
 					ipSeg, _ := netip.ParseAddr(seg)
 
 					// Ignore zero values received from bpf map
@@ -86,6 +89,10 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 					&ipfix.SRHSegmentIPv6BasicList{
 						SegmentList: sl,
 					},
+					&ipfix.PathDelayMeanDeltaMicroseconds{Val: uint32(stat.DelayMean)},
+					&ipfix.PathDelayMinDeltaMicroseconds{Val: uint32(stat.DelayMin)},
+					&ipfix.PathDelayMaxDeltaMicroseconds{Val: uint32(stat.DelayMax)},
+					&ipfix.PathDelaySumDeltaMicroseconds{Val: uint32(stat.DelaySum)},
 				}
 				//  Throw to channel
 				flowChan <- f
