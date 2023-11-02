@@ -11,13 +11,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/netip"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -27,6 +23,7 @@ import (
 	"github.com/nttcom/fluvia/pkg/ipfix"
 	"github.com/nttcom/fluvia/pkg/packet"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sys/unix"
 )
 
 type Stats struct {
@@ -241,20 +238,9 @@ func (m *Meter) Close() error {
 }
 
 func getSystemBootTime() (time.Time, error) {
-	data, err := ioutil.ReadFile("/proc/uptime")
-	if err != nil {
+	var ts unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_MONOTONIC, &ts); err != nil {
 		return time.Time{}, err
 	}
-
-	parts := strings.Split(string(data), " ")
-	if len(parts) == 0 {
-		return time.Time{}, fmt.Errorf("unexpected /proc/uptime format")
-	}
-
-	uptime, err := strconv.ParseFloat(parts[0], 64)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return time.Now().Add(-time.Duration(uptime) * time.Second), nil
+	return time.Now().Add(-time.Duration(ts.Nano())), nil
 }
