@@ -7,31 +7,18 @@ package client
 
 import (
 	"net"
-	"sync"
+	"time"
 
-	"github.com/nttcom/fluvia/pkg/packet"
+	"github.com/nttcom/fluvia/pkg/ipfix"
 )
 
-type Statistic struct {
-	Count     int64
-	DelayMean int64
-	DelayMin  int64
-	DelayMax  int64
-	DelaySum  int64
-}
-
-type StatisticMap struct {
-	Mu sync.Mutex
-	Db map[packet.ProbeData]*Statistic
-}
-
-func New(ingressIfName string, raddr *net.UDPAddr) ClientError {
-	sm := StatisticMap{Db: make(map[packet.ProbeData]*Statistic)}
+func New(ingressIfName string, raddr *net.UDPAddr, interval int) ClientError {
+	ch := make(chan []ipfix.FieldValue)
 	errChan := make(chan ClientError)
 
 	e := NewExporter()
 	go func() {
-		err := e.Run(raddr, &sm)
+		err := e.Run(raddr, ch)
 		if err != nil {
 			errChan <- ClientError{
 				Component: "exporter",
@@ -39,7 +26,18 @@ func New(ingressIfName string, raddr *net.UDPAddr) ClientError {
 			}
 		}
 	}()
-	go NewMeter(ingressIfName, &sm)
+
+	m := NewMeter(ingressIfName)
+	go func() {
+		err := m.Run(ch, time.Duration(interval))
+		if err != nil {
+			errChan <- ClientError{
+				Component: "meter",
+				Error:     err,
+			}
+		}
+		m.Close()
+	}()
 
 	for {
 		clientError := <-errChan

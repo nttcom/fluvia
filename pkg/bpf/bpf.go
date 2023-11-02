@@ -7,8 +7,12 @@
 package bpf
 
 import (
+	"errors"
+	"net"
+
 	"github.com/cilium/ebpf"
-	"github.com/pkg/errors"
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -cc $BPF_CLANG -cflags $BPF_CFLAGS xdp ../../src/main.c -- -I../../src
@@ -19,19 +23,62 @@ type XdpMetaData struct {
 	SentSubsec   uint32
 }
 
-func ReadXdpObjects(ops *ebpf.CollectionOptions) (*xdpObjects, error) {
+type Xdp struct {
+	objs *xdpObjects
+	link link.Link
+}
+
+func ReadXdpObjects(ops *ebpf.CollectionOptions) (*Xdp, error) {
 	obj := &xdpObjects{}
 	err := loadXdpObjects(obj, ops)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	// TODO: BPF log level remove hardcoding. yaml in config
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
-	return obj, nil
+	return &Xdp{
+		objs: obj,
+	}, nil
+}
+
+func (x *Xdp) Attach(iface *net.Interface) error {
+	l, err := link.AttachXDP(link.XDPOptions{
+		Program:   x.objs.XdpProg,
+		Interface: iface.Index,
+		Flags:     link.XDPGenericMode,
+	})
+	if err != nil {
+		return err
+	}
+
+	x.link = l
+
+	return nil
+}
+
+func (x *Xdp) NewPerfReader() (*perf.Reader, error) {
+	return perf.NewReader(x.objs.PacketProbePerf, 4096)
+}
+
+func (x *Xdp) Close() error {
+	errs := []error{}
+	if err := x.objs.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := x.link.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
 }
 
 const (

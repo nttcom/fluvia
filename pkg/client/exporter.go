@@ -8,12 +8,9 @@ package client
 import (
 	"log"
 	"net"
-	"net/netip"
 	"os"
-	"time"
 
 	"github.com/nttcom/fluvia/pkg/ipfix"
-	"github.com/nttcom/fluvia/pkg/packet"
 )
 
 const OBSERVATION_ID uint32 = 61166
@@ -31,7 +28,7 @@ func NewExporter() *Exporter {
 	return e
 }
 
-func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
+func (e *Exporter) Run(raddr *net.UDPAddr, flowChan chan []ipfix.FieldValue) error {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
 		return err
@@ -39,68 +36,6 @@ func (e *Exporter) Run(raddr *net.UDPAddr, sm *StatisticMap) error {
 	defer conn.Close()
 
 	var m *ipfix.Message
-
-	cache := make(map[packet.ProbeData]Statistic)
-	flowChan := make(chan []ipfix.FieldValue)
-
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			sm.Mu.Lock()
-			for probeData, stat := range sm.Db {
-				if _, ok := cache[probeData]; !ok {
-					cache[probeData] = Statistic{
-						Count:     0,
-						DelayMean: 0,
-						DelayMin:  0,
-						DelayMax:  0,
-						DelaySum:  0,
-					}
-				}
-
-				dCnt := uint64(stat.Count - cache[probeData].Count)
-
-				cache[probeData] = *stat
-
-				sl := []ipfix.SRHSegmentIPv6{}
-				for _, seg := range probeData.Segments {
-					if seg == "" {
-						break
-					}
-					ipSeg, _ := netip.ParseAddr(seg)
-
-					// Ignore zero values received from bpf map
-					if ipSeg == netip.IPv6Unspecified() {
-						break
-					}
-					seg := ipfix.SRHSegmentIPv6{Val: ipSeg}
-					sl = append(sl, seg)
-				}
-
-				actSeg, _ := netip.ParseAddr(probeData.Segments[probeData.SegmentsLeft])
-
-				f := []ipfix.FieldValue{
-					&ipfix.PacketDeltaCount{Val: dCnt},
-					&ipfix.SRHActiveSegmentIPv6{Val: actSeg},
-					&ipfix.SRHSegmentsIPv6Left{Val: probeData.SegmentsLeft},
-					&ipfix.SRHFlagsIPv6{Val: probeData.Flags},
-					&ipfix.SRHTagIPv6{Val: probeData.Tag},
-					&ipfix.SRHSegmentIPv6BasicList{
-						SegmentList: sl,
-					},
-					&ipfix.PathDelayMeanDeltaMicroseconds{Val: uint32(stat.DelayMean)},
-					&ipfix.PathDelayMinDeltaMicroseconds{Val: uint32(stat.DelayMin)},
-					&ipfix.PathDelayMaxDeltaMicroseconds{Val: uint32(stat.DelayMax)},
-					&ipfix.PathDelaySumDeltaMicroseconds{Val: uint32(stat.DelaySum)},
-				}
-				//  Throw to channel
-				flowChan <- f
-			}
-			sm.Mu.Unlock()
-		}
-	}()
 
 	for {
 		fvs := <-flowChan

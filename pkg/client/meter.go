@@ -8,29 +8,53 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
-	"github.com/cilium/ebpf/perf"
 	"github.com/nttcom/fluvia/pkg/bpf"
+	"github.com/nttcom/fluvia/pkg/ipfix"
 	"github.com/nttcom/fluvia/pkg/packet"
+	"golang.org/x/sync/errgroup"
 )
 
-func NewMeter(ingressIfName string, sm *StatisticMap) {
+type Stats struct {
+	Count     int64
+	DelayMean int64
+	DelayMin  int64
+	DelayMax  int64
+	DelaySum  int64
+}
+
+type StatsMap struct {
+	Mu sync.RWMutex
+	Db map[packet.ProbeData]*Stats
+}
+
+type Meter struct {
+	statsMap *StatsMap
+	bootTime time.Time
+	xdp      *bpf.Xdp
+}
+
+func NewMeter(ingressIfName string) *Meter {
 	bootTime, err := getSystemBootTime()
 	if err != nil {
 		log.Fatalf("Could not get boot time: %s", err)
 	}
+
+	statsMap := StatsMap{Db: make(map[packet.ProbeData]*Stats)}
 
 	iface, err := net.InterfaceByName(ingressIfName)
 	if err != nil {
@@ -38,7 +62,7 @@ func NewMeter(ingressIfName string, sm *StatisticMap) {
 	}
 
 	// Load the XDP program
-	objs, err := bpf.ReadXdpObjects(&ebpf.CollectionOptions{
+	xdp, err := bpf.ReadXdpObjects(&ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
 			LogLevel: ebpf.LogLevelInstruction,
 			LogSize:  ebpf.DefaultVerifierLogSize * 256,
@@ -50,82 +74,170 @@ func NewMeter(ingressIfName string, sm *StatisticMap) {
 			log.Fatalf("Could not load XDP program: %+v\n", ve)
 		}
 	}
-	defer objs.Close()
 
 	// Attach the XDP program.
-	l, err := link.AttachXDP(link.XDPOptions{
-		Program:   objs.XdpProg,
-		Interface: iface.Index,
-		Flags:     link.XDPGenericMode,
-	})
-	if err != nil {
+	if err = xdp.Attach(iface); err != nil {
 		log.Fatalf("Could not attach XDP program: %s", err)
-	}
-	defer l.Close()
-
-	perfEvent, err := perf.NewReader(objs.PacketProbePerf, 4096)
-	if err != nil {
-		log.Fatalf("Could not obtain perf reader: %s", err)
 	}
 
 	log.Printf("Attached XDP program to iface %q (index %d)", iface.Name, iface.Index)
 	log.Printf("Press Ctrl-C to exit and remove the program")
 
+	return &Meter{
+		statsMap: &statsMap,
+		bootTime: bootTime,
+		xdp:      xdp,
+	}
+}
+
+func (m *Meter) Run(flowChan chan []ipfix.FieldValue, interval time.Duration) error {
+	eg, ctx := errgroup.WithContext(context.Background())
+	eg.Go(func() error {
+		return m.Read(ctx)
+	})
+	eg.Go(func() error {
+		return m.Send(ctx, flowChan, interval)
+	})
+
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Meter) Read(ctx context.Context) error {
+	perfEvent, err := m.xdp.NewPerfReader()
+	if err != nil {
+		log.Fatalf("Could not obtain perf reader: %s", err)
+	}
+
 	var metadata bpf.XdpMetaData
 	for {
-		eventData, err := perfEvent.Read()
-		if err != nil {
-			log.Fatalf("Could not read from bpf perf map:")
-		}
-
-		reader := bytes.NewReader(eventData.RawSample)
-
-		if err := binary.Read(reader, binary.LittleEndian, &metadata); err != nil {
-			log.Fatalf("Could not read from reader: %s", err)
-		}
-
-		metadata_size := unsafe.Sizeof(metadata)
-		if len(eventData.RawSample)-int(metadata_size) <= 0 {
-			continue
-		}
-
-		receivedNano := bootTime.Add(time.Duration(metadata.ReceivedNano) * time.Nanosecond)
-		SentNano := time.Unix(int64(metadata.SentSec), int64(metadata.SentSubsec))
-
-		delay := receivedNano.Sub(SentNano)
-
-		probeData, err := packet.Parse(eventData.RawSample[metadata_size:])
-		if err != nil {
-			log.Fatalf("Could not parse the packet: %s", err)
-		}
-
-		delayMicro := delay.Microseconds()
-
-		sm.Mu.Lock()
-		if value, ok := sm.Db[*probeData]; !ok {
-			sm.Db[*probeData] = &Statistic{
-				Count:     1,
-				DelayMean: delayMicro,
-				DelayMin:  delayMicro,
-				DelayMax:  delayMicro,
-				DelaySum:  delayMicro,
-			}
-		} else {
-			value.Count = value.Count + 1
-
-			if delayMicro < value.DelayMin {
-				value.DelayMin = delayMicro
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			eventData, err := perfEvent.Read()
+			if err != nil {
+				log.Fatalf("Could not read from bpf perf map:")
 			}
 
-			if delayMicro > value.DelayMax {
-				value.DelayMax = delayMicro
+			reader := bytes.NewReader(eventData.RawSample)
+
+			if err := binary.Read(reader, binary.LittleEndian, &metadata); err != nil {
+				log.Fatalf("Could not read from reader: %s", err)
 			}
 
-			value.DelaySum = value.DelaySum + delayMicro
-			value.DelayMean = value.DelaySum / value.Count
+			metadata_size := unsafe.Sizeof(metadata)
+			if len(eventData.RawSample)-int(metadata_size) <= 0 {
+				continue
+			}
+
+			receivedNano := m.bootTime.Add(time.Duration(metadata.ReceivedNano) * time.Nanosecond)
+			SentNano := time.Unix(int64(metadata.SentSec), int64(metadata.SentSubsec))
+
+			delay := receivedNano.Sub(SentNano)
+
+			probeData, err := packet.Parse(eventData.RawSample[metadata_size:])
+			if err != nil {
+				log.Fatalf("Could not parse the packet: %s", err)
+			}
+
+			delayMicro := delay.Microseconds()
+
+			m.statsMap.Mu.Lock()
+			if value, ok := m.statsMap.Db[*probeData]; !ok {
+				m.statsMap.Db[*probeData] = &Stats{
+					Count:     1,
+					DelayMean: delayMicro,
+					DelayMin:  delayMicro,
+					DelayMax:  delayMicro,
+					DelaySum:  delayMicro,
+				}
+			} else {
+				value.Count = value.Count + 1
+
+				if delayMicro < value.DelayMin {
+					value.DelayMin = delayMicro
+				}
+
+				if delayMicro > value.DelayMax {
+					value.DelayMax = delayMicro
+				}
+
+				value.DelaySum = value.DelaySum + delayMicro
+				value.DelayMean = value.DelaySum / value.Count
+			}
+			m.statsMap.Mu.Unlock()
 		}
-		sm.Mu.Unlock()
 	}
+}
+
+func (m *Meter) Send(ctx context.Context, flowChan chan []ipfix.FieldValue, intervalSec time.Duration) error {
+	ticker := time.NewTicker(intervalSec * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			m.statsMap.Mu.Lock()
+			for probeData, stat := range m.statsMap.Db {
+				dCnt := uint64(stat.Count)
+
+				sl := []ipfix.SRHSegmentIPv6{}
+				for _, seg := range probeData.Segments {
+					if seg == "" {
+						break
+					}
+					ipSeg, _ := netip.ParseAddr(seg)
+
+					// Ignore zero values received from bpf map
+					if ipSeg == netip.IPv6Unspecified() {
+						break
+					}
+					seg := ipfix.SRHSegmentIPv6{Val: ipSeg}
+					sl = append(sl, seg)
+				}
+
+				actSeg, _ := netip.ParseAddr(probeData.Segments[probeData.SegmentsLeft])
+
+				f := []ipfix.FieldValue{
+					&ipfix.PacketDeltaCount{Val: dCnt},
+					&ipfix.SRHActiveSegmentIPv6{Val: actSeg},
+					&ipfix.SRHSegmentsIPv6Left{Val: probeData.SegmentsLeft},
+					&ipfix.SRHFlagsIPv6{Val: probeData.Flags},
+					&ipfix.SRHTagIPv6{Val: probeData.Tag},
+					&ipfix.SRHSegmentIPv6BasicList{
+						SegmentList: sl,
+					},
+					&ipfix.PathDelayMeanDeltaMicroseconds{Val: uint32(stat.DelayMean)},
+					&ipfix.PathDelayMinDeltaMicroseconds{Val: uint32(stat.DelayMin)},
+					&ipfix.PathDelayMaxDeltaMicroseconds{Val: uint32(stat.DelayMax)},
+					&ipfix.PathDelaySumDeltaMicroseconds{Val: uint32(stat.DelaySum)},
+				}
+				//  Throw to channel
+				flowChan <- f
+
+				// Stats (e.g., DelayMean) are based on packets received over a fixed duration
+				// These need to be cleared out for the next calculation of statistics
+				delete(m.statsMap.Db, probeData)
+			}
+			m.statsMap.Mu.Unlock()
+		}
+	}
+
+	return nil
+}
+
+func (m *Meter) Close() error {
+	if err := m.xdp.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getSystemBootTime() (time.Time, error) {
