@@ -19,9 +19,9 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/nttcom/fluvia/internal/pkg/meter"
 	"github.com/nttcom/fluvia/pkg/bpf"
 	"github.com/nttcom/fluvia/pkg/ipfix"
-	"github.com/nttcom/fluvia/pkg/packet"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
@@ -36,7 +36,7 @@ type Stats struct {
 
 type StatsMap struct {
 	Mu sync.RWMutex
-	Db map[packet.ProbeData]*Stats
+	Db map[meter.ProbeData]*Stats
 }
 
 type Meter struct {
@@ -51,7 +51,7 @@ func NewMeter(ingressIfName string) *Meter {
 		log.Fatalf("Could not get boot time: %s", err)
 	}
 
-	statsMap := StatsMap{Db: make(map[packet.ProbeData]*Stats)}
+	statsMap := StatsMap{Db: make(map[meter.ProbeData]*Stats)}
 
 	iface, err := net.InterfaceByName(ingressIfName)
 	if err != nil {
@@ -136,7 +136,7 @@ func (m *Meter) Read(ctx context.Context) error {
 
 			delay := receivedNano.Sub(SentNano)
 
-			probeData, err := packet.Parse(eventData.RawSample[metadata_size:])
+			probeData, err := meter.Parse(eventData.RawSample[metadata_size:])
 			if err != nil {
 				log.Fatalf("Could not parse the packet: %s", err)
 			}

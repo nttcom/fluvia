@@ -1,4 +1,4 @@
-package bpf
+package meter
 
 import (
 	"encoding/binary"

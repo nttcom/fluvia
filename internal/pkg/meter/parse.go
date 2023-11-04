@@ -1,4 +1,4 @@
-package packet
+package meter
 
 import (
 	"errors"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/nttcom/fluvia/pkg/bpf"
 )
 
 const MAX_SEGMENTLIST_ENTRIES = 10
@@ -62,9 +61,9 @@ func Parse(data []byte) (*ProbeData, error) {
 		return nil, errors.New(fmt.Sprintf("Next header is not SRv6: %d", hbh.NextHeader))
 	}
 
-	packet = gopacket.NewPacket(ipv6HBHLayer.LayerPayload(), bpf.Srv6LayerType, gopacket.Lazy)
-	srv6Layer := packet.Layer(bpf.Srv6LayerType)
-	srv6, ok := srv6Layer.(*bpf.Srv6Layer)
+	packet = gopacket.NewPacket(ipv6HBHLayer.LayerPayload(), Srv6LayerType, gopacket.Lazy)
+	srv6Layer := packet.Layer(Srv6LayerType)
+	srv6, ok := srv6Layer.(*Srv6Layer)
 	if !ok {
 		return nil, errors.New("Could not parse a packet with SRv6")
 	}
