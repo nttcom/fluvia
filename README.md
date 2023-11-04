@@ -30,12 +30,16 @@ Fluvia Exporter is licensed under the [MIT license](https://en.wikipedia.org/wik
 For the full license text, see [LICENSE](https://github.com/nttcom/fluvia/blob/master/LICENSE).
 
 ## Miscellaneous
-Fluvia Exporter supports the following IETF Internet-Drafts:
-- [Export of Segment Routing over IPv6 Information in IP Flow Information Export (IPFIX)](https://datatracker.ietf.org/doc/html/draft-ietf-opsawg-ipfix-srv6-srh-14)
-  - IPFIX Library: Supports all IEs.
-  - IPFIX Exporter: Implemented the following IEs.
+Fluvia Exporter supports the following IEs:
+  - packetDeltaCount
+  - [draft-ietf-opsawg-ipfix-srv6-srh](https://datatracker.ietf.org/doc/draft-ietf-opsawg-ipfix-srv6-srh/)
     - srhActiveSegmentIPv6
     - srhSegmentsIPv6Left
     - srhFlagsIPv6
     - srhTagIPv6
     - srhSegmentIPv6BasicList
+  - [draft-ietf-opsawg-ipfix-on-path-telemetry](https://datatracker.ietf.org/doc/draft-ietf-opsawg-ipfix-on-path-telemetry/)
+    - PathDelayMeanDeltaMicroseconds
+    - PathDelayMaxDeltaMicroseconds
+    - PathDelayMinDeltaMicroseconds
+    - PathDelaySumDeltaMicroseconds 
