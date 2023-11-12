@@ -46,7 +46,7 @@ func (i *Srv6Layer) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) err
 	i.Flags = data[5]
 	i.Tag = binary.BigEndian.Uint16(data[6:8])
 
-	for j := 0; j < int(i.HdrExtLen/2); j++ {
+	for j := 0; j < int(i.LastEntry+1); j++ {
 		startBit := 8 + 16*j
 		endBit := 24 + 16*j
 		var addr []byte
