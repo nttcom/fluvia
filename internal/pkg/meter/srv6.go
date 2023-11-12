@@ -2,7 +2,7 @@ package meter
 
 import (
 	"encoding/binary"
-	"errors"
+	"fmt"
 	"net/netip"
 
 	"github.com/google/gopacket"
@@ -36,7 +36,7 @@ func (l *Srv6Layer) LayerType() gopacket.LayerType {
 func (i *Srv6Layer) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 	if len(data) < 8 {
 		df.SetTruncated()
-		return errors.New("SRV6 layer less then 8 bytes for SRV6 packet")
+		return fmt.Errorf("SRV6 layer less then 8 bytes for SRV6 packet")
 	}
 	i.NextHeader = data[0]
 	i.HdrExtLen = data[1]
