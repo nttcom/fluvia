@@ -19,7 +19,10 @@ ipfix:
   address: 192.0.2.1
   port: 4739
   ingress-interface: ens192
+  interval: 1
 ```
+
+interval is the intervals between exports (seconds) and the default is 1 second.
 
 ### Run Fluvia Exporter using the fluvia command
 

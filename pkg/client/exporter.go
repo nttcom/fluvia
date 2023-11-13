@@ -10,7 +10,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/nttcom/fluvia/pkg/packet/ipfix"
+	"github.com/nttcom/fluvia/pkg/ipfix"
 )
 
 const OBSERVATION_ID uint32 = 61166

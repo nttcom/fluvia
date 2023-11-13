@@ -294,6 +294,102 @@ func (fv *SRHSegmentIPv6EndpointBehavior) FieldSpecifier() *FieldSpecifier {
 	return fs
 }
 
+type PathDelayMeanDeltaMicroseconds struct {
+	Val uint32
+}
+
+func (fv *PathDelayMeanDeltaMicroseconds) ElementID() uint16 {
+	return IEID_PATH_DELAY_MEAN_DALTA_MICROSECONDS
+}
+
+func (fv *PathDelayMeanDeltaMicroseconds) Serialize() []uint8 {
+	ret := make([]uint8, 4)
+	binary.BigEndian.PutUint32(ret, fv.Val)
+	return ret
+}
+
+func (fv *PathDelayMeanDeltaMicroseconds) Len() uint16 {
+	return 4
+}
+
+func (fv *PathDelayMeanDeltaMicroseconds) FieldSpecifier() *FieldSpecifier {
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	return fs
+}
+
+type PathDelayMinDeltaMicroseconds struct {
+	Val uint32
+}
+
+func (fv *PathDelayMinDeltaMicroseconds) ElementID() uint16 {
+	return IEID_PATH_DELAY_MIN_DALTA_MICROSECONDS
+}
+
+func (fv *PathDelayMinDeltaMicroseconds) Serialize() []uint8 {
+	ret := make([]uint8, 4)
+	binary.BigEndian.PutUint32(ret, fv.Val)
+	return ret
+}
+
+func (fv *PathDelayMinDeltaMicroseconds) Len() uint16 {
+	return 4
+}
+
+func (fv *PathDelayMinDeltaMicroseconds) FieldSpecifier() *FieldSpecifier {
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	return fs
+}
+
+type PathDelayMaxDeltaMicroseconds struct {
+	Val uint32
+}
+
+func (fv *PathDelayMaxDeltaMicroseconds) ElementID() uint16 {
+	return IEID_PATH_DELAY_MAX_DALTA_MICROSECONDS
+}
+
+func (fv *PathDelayMaxDeltaMicroseconds) Serialize() []uint8 {
+	ret := make([]uint8, 4)
+	binary.BigEndian.PutUint32(ret, fv.Val)
+	return ret
+}
+
+func (fv *PathDelayMaxDeltaMicroseconds) Len() uint16 {
+	return 4
+}
+
+func (fv *PathDelayMaxDeltaMicroseconds) FieldSpecifier() *FieldSpecifier {
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	return fs
+}
+
+type PathDelaySumDeltaMicroseconds struct {
+	Val uint32
+}
+
+func (fv *PathDelaySumDeltaMicroseconds) ElementID() uint16 {
+	return IEID_PATH_DELAY_SUM_DALTA_MICROSECONDS
+}
+
+func (fv *PathDelaySumDeltaMicroseconds) Serialize() []uint8 {
+	ret := make([]uint8, 4)
+	binary.BigEndian.PutUint32(ret, fv.Val)
+	return ret
+}
+
+func (fv *PathDelaySumDeltaMicroseconds) Len() uint16 {
+	return 4
+}
+
+func (fv *PathDelaySumDeltaMicroseconds) FieldSpecifier() *FieldSpecifier {
+	templateLen := fv.Len()
+	fs := NewFieldSpecifier(false, fv.ElementID(), templateLen, ENTERPRISE_NUMBER_NTTCOM)
+	return fs
+}
+
 type UndefinedFieldValue struct {
 	ElemID           uint16
 	Value            []uint8

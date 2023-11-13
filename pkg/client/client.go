@@ -7,11 +7,12 @@ package client
 
 import (
 	"net"
+	"time"
 
-	"github.com/nttcom/fluvia/pkg/packet/ipfix"
+	"github.com/nttcom/fluvia/pkg/ipfix"
 )
 
-func New(ingressIfName string, raddr *net.UDPAddr) ClientError {
+func New(ingressIfName string, raddr *net.UDPAddr, interval int) ClientError {
 	ch := make(chan []ipfix.FieldValue)
 	errChan := make(chan ClientError)
 
@@ -25,7 +26,18 @@ func New(ingressIfName string, raddr *net.UDPAddr) ClientError {
 			}
 		}
 	}()
-	go NewMeter(ingressIfName, ch)
+
+	m := NewMeter(ingressIfName)
+	go func() {
+		err := m.Run(ch, time.Duration(interval))
+		if err != nil {
+			errChan <- ClientError{
+				Component: "meter",
+				Error:     err,
+			}
+		}
+		m.Close()
+	}()
 
 	for {
 		clientError := <-errChan

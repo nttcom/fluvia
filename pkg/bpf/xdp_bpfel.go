@@ -60,7 +60,7 @@ type xdpProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type xdpMapSpecs struct {
-	IpfixProbeMap *ebpf.MapSpec `ebpf:"ipfix_probe_map"`
+	PacketProbePerf *ebpf.MapSpec `ebpf:"packet_probe_perf"`
 }
 
 // xdpObjects contains all objects after they have been loaded into the kernel.
@@ -82,12 +82,12 @@ func (o *xdpObjects) Close() error {
 //
 // It can be passed to loadXdpObjects or ebpf.CollectionSpec.LoadAndAssign.
 type xdpMaps struct {
-	IpfixProbeMap *ebpf.Map `ebpf:"ipfix_probe_map"`
+	PacketProbePerf *ebpf.Map `ebpf:"packet_probe_perf"`
 }
 
 func (m *xdpMaps) Close() error {
 	return _XdpClose(
-		m.IpfixProbeMap,
+		m.PacketProbePerf,
 	)
 }
 

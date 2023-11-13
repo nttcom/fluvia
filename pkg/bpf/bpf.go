@@ -7,45 +7,78 @@
 package bpf
 
 import (
-	"fmt"
+	"errors"
 	"net"
 
 	"github.com/cilium/ebpf"
-	"github.com/pkg/errors"
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -cc $BPF_CLANG -cflags $BPF_CFLAGS xdp ../../src/main.c -- -I../../src
 
-type XdpProbeData struct {
-	H_dest       [6]uint8
-	H_source     [6]uint8
-	H_proto      uint16
-	_            [2]byte
-	V6Srcaddr    struct{ In6U struct{ U6Addr8 [16]uint8 } }
-	V6Dstaddr    struct{ In6U struct{ U6Addr8 [16]uint8 } }
-	NextHdr      uint8
-	HdrExtLen    uint8
-	RoutingType  uint8
-	SegmentsLeft uint8
-	LastEntry    uint8
-	Flags        uint8
-	Tag          uint16
-	Segments     [10]struct{ In6U struct{ U6Addr8 [16]uint8 } }
+type XdpMetaData struct {
+	ReceivedNano uint64
+	SentSec      uint32
+	SentSubsec   uint32
 }
 
-func ReadXdpObjects(ops *ebpf.CollectionOptions) (*xdpObjects, error) {
+type Xdp struct {
+	objs *xdpObjects
+	link link.Link
+}
+
+func ReadXdpObjects(ops *ebpf.CollectionOptions) (*Xdp, error) {
 	obj := &xdpObjects{}
 	err := loadXdpObjects(obj, ops)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	// TODO: BPF log level remove hardcoding. yaml in config
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
-	return obj, nil
+	return &Xdp{
+		objs: obj,
+	}, nil
+}
+
+func (x *Xdp) Attach(iface *net.Interface) error {
+	l, err := link.AttachXDP(link.XDPOptions{
+		Program:   x.objs.XdpProg,
+		Interface: iface.Index,
+		Flags:     link.XDPGenericMode,
+	})
+	if err != nil {
+		return err
+	}
+
+	x.link = l
+
+	return nil
+}
+
+func (x *Xdp) NewPerfReader() (*perf.Reader, error) {
+	return perf.NewReader(x.objs.PacketProbePerf, 4096)
+}
+
+func (x *Xdp) Close() error {
+	errs := []error{}
+	if err := x.objs.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := x.link.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
 }
 
 const (
@@ -55,16 +88,3 @@ const (
 	XDP_TX
 	XDP_REDIRECT
 )
-
-func PrintEntrys(entry XdpProbeData, count uint64) {
-	mac := func(mac [6]uint8) string {
-		return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
-	}
-	saddr := net.IP(entry.V6Srcaddr.In6U.U6Addr8[:]).String()
-	daddr := net.IP(entry.V6Dstaddr.In6U.U6Addr8[:]).String()
-
-	fmt.Printf(
-		"H_dest: %s, H_source: %v, H_proto: %v, V6Dstaddr: %v, V6Srcaddr: %v -> count: %v\n",
-		mac(entry.H_dest), mac(entry.H_source), entry.H_proto, daddr, saddr, count)
-
-}

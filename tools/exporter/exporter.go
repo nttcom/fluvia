@@ -11,7 +11,7 @@ import (
 	"net/netip"
 
 	"github.com/nttcom/fluvia/pkg/client"
-	"github.com/nttcom/fluvia/pkg/packet/ipfix"
+	"github.com/nttcom/fluvia/pkg/ipfix"
 )
 
 func main() {
