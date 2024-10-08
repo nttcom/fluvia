@@ -62,7 +62,6 @@ func NewMeter(ingressIfName string) *Meter {
 	xdp, err := bpf.ReadXdpObjects(&ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
 			LogLevel: ebpf.LogLevelInstruction,
-			LogSize:  ebpf.DefaultVerifierLogSize * 256,
 		},
 	})
 	if err != nil {
