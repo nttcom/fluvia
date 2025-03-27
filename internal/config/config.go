@@ -23,12 +23,12 @@ type Config struct {
 	Ipfix Ipfix `yaml:"ipfix"`
 }
 
-func ReadConfigFile(configFile string) (Config, error) {
+func ReadConfigFile(configFile string) (*Config, error) {
 	c := &Config{}
 
 	f, err := os.Open(configFile)
 	if err != nil {
-		return *c, err
+		return nil, err
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -37,7 +37,7 @@ func ReadConfigFile(configFile string) (Config, error) {
 	}()
 
 	if err := yaml.NewDecoder(f).Decode(c); err != nil {
-		return *c, err
+		return nil, err
 	}
-	return *c, nil
+	return c, nil
 }
