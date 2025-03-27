@@ -140,13 +140,22 @@ func TestXDPProg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer objs.Close()
+	defer func() {
+		if err := objs.Close(); err != nil {
+			t.Errorf("failed to close objs: %v", err)
+		}
+	}()
 
 	fmt.Println("debug log")
 	perfEvent, err := perf.NewReader(objs.PacketProbePerf, 4096)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		if err := perfEvent.Close(); err != nil {
+			t.Errorf("failed to close perfEvent: %v", err)
+		}
+	}()
 
 	var metadata XdpMetaData
 

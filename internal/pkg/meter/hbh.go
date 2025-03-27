@@ -70,14 +70,10 @@ func (l *HBHLayer) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) erro
 	p++
 
 	optionIdx := 0
-	for {
-		if data[p] != IPV6_TLV_PAD1 {
-			break
-		}
-
+	for p < len(data) && data[p] == IPV6_TLV_PAD1 {
 		l.Options[optionIdx].Type = IPV6_TLV_PAD1
-		optionIdx = optionIdx + 1
-		p = p + 1
+		optionIdx++
+		p++
 	}
 
 	ioamOption := l.Options[optionIdx]
@@ -93,14 +89,14 @@ func (l *HBHLayer) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) erro
 
 	trace := ioamOption.TraceHeader
 	trace.NameSpaceId = binary.BigEndian.Uint16(data[p : p+2])
-	p = p + 2
+	p += 2
 	trace.NodeLen = data[p] >> 3
 	trace.Flags = ((data[p] & 0b00000111) << 1) | (data[p+1] >> 7)
-	p = p + 1
+	p++
 	trace.RemainingLen = data[p] & 0b01111111
-	p = p + 1
+	p++
 	copy(trace.Type[:], data[p:p+3])
-	p = p + 3
+	p += 3
 	trace.Reserved = data[p]
 	p++
 

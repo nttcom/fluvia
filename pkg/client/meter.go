@@ -170,8 +170,8 @@ func (m *Meter) Read(ctx context.Context) error {
 	}
 }
 
-func (m *Meter) Send(ctx context.Context, flowChan chan []ipfix.FieldValue, intervalSec time.Duration) error {
-	ticker := time.NewTicker(intervalSec * time.Second)
+func (m *Meter) Send(ctx context.Context, flowChan chan []ipfix.FieldValue, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for range ticker.C {

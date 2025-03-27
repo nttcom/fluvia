@@ -6,6 +6,7 @@
 package config
 
 import (
+	"log"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -29,7 +30,11 @@ func ReadConfigFile(configFile string) (Config, error) {
 	if err != nil {
 		return *c, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("failed to close config file %s: %v", configFile, err)
+		}
+	}()
 
 	if err := yaml.NewDecoder(f).Decode(c); err != nil {
 		return *c, err

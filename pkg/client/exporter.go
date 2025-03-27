@@ -33,7 +33,11 @@ func (e *Exporter) Run(raddr *net.UDPAddr, flowChan chan []ipfix.FieldValue) err
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("failed to close connection: %v", err)
+		}
+	}()
 
 	var m *ipfix.Message
 	// get flow data from go channel

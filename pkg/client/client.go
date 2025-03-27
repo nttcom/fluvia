@@ -6,6 +6,7 @@
 package client
 
 import (
+	"log"
 	"net"
 	"time"
 
@@ -28,6 +29,12 @@ func New(ingressIfName string, raddr *net.UDPAddr, interval int) ClientError {
 	}()
 
 	m := NewMeter(ingressIfName)
+	defer func() {
+		if err := m.Close(); err != nil {
+			log.Printf("failed to close meter: %v", err)
+		}
+	}()
+
 	go func() {
 		err := m.Run(ch, time.Duration(interval))
 		if err != nil {
@@ -36,7 +43,6 @@ func New(ingressIfName string, raddr *net.UDPAddr, interval int) ClientError {
 				Error:     err,
 			}
 		}
-		m.Close()
 	}()
 
 	for {
